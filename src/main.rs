@@ -1,10 +1,9 @@
 pub mod message_bus {
-    use log::*;
-    use once_cell::sync::Lazy;
-    use std::sync::Arc;
-    use tokio::sync::broadcast::{channel, error::RecvError, Receiver, Sender};
-
     // make_message_bus!(
+    //     sub_topic::SubTopic => {
+    //        Foo => u32,
+    //        Bar => u8,
+    //     },
     //     SystemHealth => String,
     //     SomeData => u32,
     // )
@@ -12,6 +11,79 @@ pub mod message_bus {
     //
     // ----- macro expansion -----
     //
+    use once_cell::sync::Lazy;
+    use std::sync::Arc;
+    use tokio::sync::broadcast::{channel, error::RecvError, Receiver, Sender};
+
+    pub use sub_topic::SubTopic;
+
+    pub mod sub_topic {
+        use super::*;
+
+        #[doc(hidden)]
+        #[allow(non_upper_case_globals)]
+        static TOPIC_SubTopic: Lazy<Sender<SubTopic>> = Lazy::new(|| channel(1).0);
+
+        #[doc(hidden)]
+        #[allow(non_upper_case_globals)]
+        static TOPIC_SubTopic_Foo: Lazy<Sender<Arc<u32>>> = Lazy::new(|| channel(1).0);
+
+        #[doc(hidden)]
+        #[allow(non_upper_case_globals)]
+        static TOPIC_SubTopic_Bar: Lazy<Sender<Arc<u8>>> = Lazy::new(|| channel(1).0);
+
+        /// Receiver for sub-topics `Foo`, `Bar`.
+        #[derive(Clone)]
+        pub enum SubTopic {
+            /// Receiver for `Foo`.
+            Foo(Arc<u32>),
+            /// Receiver for `Bar`.
+            Bar(Arc<u8>),
+        }
+
+        impl SubTopic {
+            /// Subscribe to all topics under `SubTopic`.
+            pub fn subscribe() -> Receiver<SubTopic> {
+                TOPIC_SubTopic.subscribe()
+            }
+        }
+
+        fn publish(payload: SubTopic) {
+            TOPIC_SubTopic.send(payload).ok();
+        }
+
+        pub struct Foo {}
+
+        impl Foo {
+            pub fn subscribe() -> Receiver<Arc<u32>> {
+                TOPIC_SubTopic_Foo.subscribe()
+            }
+
+            pub fn publish(payload: u32) {
+                let payload = Arc::new(payload);
+
+                TOPIC_SubTopic_Foo.send(payload.clone()).ok();
+
+                publish(SubTopic::Foo(payload))
+            }
+        }
+
+        pub struct Bar {}
+
+        impl Bar {
+            pub fn subscribe() -> Receiver<Arc<u8>> {
+                TOPIC_SubTopic_Bar.subscribe()
+            }
+
+            pub fn publish(payload: u8) {
+                let payload = Arc::new(payload);
+
+                TOPIC_SubTopic_Bar.send(payload.clone()).ok();
+
+                publish(SubTopic::Bar(payload))
+            }
+        }
+    }
 
     /// Handle to the `SystemHealth` topic on the bus.
     pub struct SystemHealth {}
@@ -26,20 +98,7 @@ pub mod message_bus {
         }
 
         pub fn publish(payload: String) {
-            match TOPIC_SystemHealth.send(Arc::new(payload)) {
-                Ok(v) => {
-                    trace!(
-                        "Published message to `{}`, {v} active listeners",
-                        "SystemHealth"
-                    )
-                }
-                Err(_) => {
-                    trace!(
-                        "Failed to published message to `{}`, no active listeners",
-                        "SystemHealth"
-                    )
-                }
-            }
+            TOPIC_SystemHealth.send(Arc::new(payload)).ok();
         }
     }
 
@@ -56,14 +115,7 @@ pub mod message_bus {
         }
 
         pub fn publish(payload: u32) {
-            match TOPIC_SomeData.send(Arc::new(payload)) {
-                Ok(v) => {
-                    trace!("Published message to `SomeData`, {v} active listeners")
-                }
-                Err(_) => {
-                    trace!("Failed to published message to `SomeData`, no active listeners")
-                }
-            }
+            TOPIC_SomeData.send(Arc::new(payload)).ok();
         }
     }
 
