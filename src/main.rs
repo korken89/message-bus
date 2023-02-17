@@ -12,7 +12,6 @@ pub mod message_bus {
     // ----- macro expansion -----
     //
     use once_cell::sync::Lazy;
-    use std::sync::Arc;
     use tokio::sync::broadcast::{channel, error::RecvError, Receiver, Sender};
 
     pub use sub_topic::SubTopic;
@@ -26,19 +25,19 @@ pub mod message_bus {
 
         #[doc(hidden)]
         #[allow(non_upper_case_globals)]
-        static TOPIC_SubTopic_Foo: Lazy<Sender<Arc<u32>>> = Lazy::new(|| channel(1).0);
+        static TOPIC_SubTopic_Foo: Lazy<Sender<u32>> = Lazy::new(|| channel(1).0);
 
         #[doc(hidden)]
         #[allow(non_upper_case_globals)]
-        static TOPIC_SubTopic_Bar: Lazy<Sender<Arc<u8>>> = Lazy::new(|| channel(1).0);
+        static TOPIC_SubTopic_Bar: Lazy<Sender<u8>> = Lazy::new(|| channel(1).0);
 
         /// Receiver for sub-topics `Foo`, `Bar`.
         #[derive(Clone)]
         pub enum SubTopic {
             /// Receiver for `Foo`.
-            Foo(Arc<u32>),
+            Foo(u32),
             /// Receiver for `Bar`.
-            Bar(Arc<u8>),
+            Bar(u8),
         }
 
         impl SubTopic {
@@ -55,13 +54,11 @@ pub mod message_bus {
         pub struct Foo {}
 
         impl Foo {
-            pub fn subscribe() -> Receiver<Arc<u32>> {
+            pub fn subscribe() -> Receiver<u32> {
                 TOPIC_SubTopic_Foo.subscribe()
             }
 
             pub fn publish(payload: u32) {
-                let payload = Arc::new(payload);
-
                 TOPIC_SubTopic_Foo.send(payload.clone()).ok();
 
                 publish(SubTopic::Foo(payload))
@@ -71,13 +68,11 @@ pub mod message_bus {
         pub struct Bar {}
 
         impl Bar {
-            pub fn subscribe() -> Receiver<Arc<u8>> {
+            pub fn subscribe() -> Receiver<u8> {
                 TOPIC_SubTopic_Bar.subscribe()
             }
 
             pub fn publish(payload: u8) {
-                let payload = Arc::new(payload);
-
                 TOPIC_SubTopic_Bar.send(payload.clone()).ok();
 
                 publish(SubTopic::Bar(payload))
@@ -90,15 +85,15 @@ pub mod message_bus {
 
     #[doc(hidden)]
     #[allow(non_upper_case_globals)]
-    static TOPIC_SystemHealth: Lazy<Sender<Arc<String>>> = Lazy::new(|| channel(1).0);
+    static TOPIC_SystemHealth: Lazy<Sender<String>> = Lazy::new(|| channel(1).0);
 
     impl SystemHealth {
-        pub fn subscribe() -> Receiver<Arc<String>> {
+        pub fn subscribe() -> Receiver<String> {
             TOPIC_SystemHealth.subscribe()
         }
 
         pub fn publish(payload: String) {
-            TOPIC_SystemHealth.send(Arc::new(payload)).ok();
+            TOPIC_SystemHealth.send(payload).ok();
         }
     }
 
@@ -107,15 +102,15 @@ pub mod message_bus {
 
     #[doc(hidden)]
     #[allow(non_upper_case_globals)]
-    static TOPIC_SomeData: Lazy<Sender<Arc<u32>>> = Lazy::new(|| channel(1).0);
+    static TOPIC_SomeData: Lazy<Sender<u32>> = Lazy::new(|| channel(1).0);
 
     impl SomeData {
-        pub fn subscribe() -> Receiver<Arc<u32>> {
+        pub fn subscribe() -> Receiver<u32> {
             TOPIC_SomeData.subscribe()
         }
 
         pub fn publish(payload: u32) {
-            TOPIC_SomeData.send(Arc::new(payload)).ok();
+            TOPIC_SomeData.send(payload).ok();
         }
     }
 
