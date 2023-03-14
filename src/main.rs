@@ -1,3 +1,8 @@
+//! Crate
+
+#![deny(missing_docs)]
+
+/// The message bus definition rescides here.
 pub mod message_bus {
     // make_message_bus!(
     //     sub_topic::SubTopic => {
@@ -12,10 +17,51 @@ pub mod message_bus {
     // ----- macro expansion -----
     //
     use once_cell::sync::Lazy;
-    use tokio::sync::broadcast::{channel, error::RecvError, Receiver, Sender};
+    use tokio::sync::broadcast::{
+        channel,
+        error::{RecvError, TryRecvError},
+        Receiver, Sender,
+    };
+
+    /// A subscriber to a topic on the bus.
+    pub struct Subscriber<T: Clone>(Receiver<T>);
+
+    impl<T> Subscriber<T>
+    where
+        T: Clone,
+    {
+        /// Tries to receive a value. Will never return `Lagged`.
+        pub fn try_recv(&mut self) -> Option<T> {
+            loop {
+                match self.0.try_recv() {
+                    Ok(v) => return Some(v),
+                    Err(TryRecvError::Empty) => return None,
+                    Err(TryRecvError::Lagged(_)) => {}
+                    Err(TryRecvError::Closed) => unreachable!(), // Impossible to drop the sender
+                }
+            }
+        }
+
+        /// Receive and ignore `Lagged` errors. This will provide the latest value available.
+        pub async fn recv(&mut self) -> T {
+            loop {
+                match self.0.recv().await {
+                    Ok(msg) => return msg,
+                    Err(RecvError::Lagged(_)) => {}
+                    Err(RecvError::Closed) => unreachable!(), // Impossible to drop the sender
+                }
+            }
+        }
+
+        /// Checks if there is any message on the topic.
+        pub fn is_empty(&self) -> bool {
+            self.0.is_empty()
+        }
+    }
 
     pub use sub_topic::SubTopic;
 
+    #[allow(missing_docs)]
     pub mod sub_topic {
         use super::*;
 
@@ -42,22 +88,26 @@ pub mod message_bus {
 
         impl SubTopic {
             /// Subscribe to all topics under `SubTopic`.
-            pub fn subscribe() -> Receiver<SubTopic> {
-                TOPIC_SubTopic.subscribe()
+            pub fn subscribe() -> Subscriber<SubTopic> {
+                Subscriber(TOPIC_SubTopic.subscribe())
             }
         }
 
-        fn publish(payload: SubTopic) {
+        /// Publish to `SubTopic`.
+        pub fn publish(payload: SubTopic) {
             TOPIC_SubTopic.send(payload).ok();
         }
 
+        /// Handle to the `Foo` topic.
         pub struct Foo {}
 
         impl Foo {
-            pub fn subscribe() -> Receiver<u32> {
-                TOPIC_SubTopic_Foo.subscribe()
+            /// Subscribe to the `Foo` topic.
+            pub fn subscribe() -> Subscriber<u32> {
+                Subscriber(TOPIC_SubTopic_Foo.subscribe())
             }
 
+            /// Publish to the `Foo` topic.
             pub fn publish(payload: u32) {
                 TOPIC_SubTopic_Foo.send(payload.clone()).ok();
 
@@ -65,13 +115,16 @@ pub mod message_bus {
             }
         }
 
+        /// Handle to the `Bar` topic.
         pub struct Bar {}
 
         impl Bar {
-            pub fn subscribe() -> Receiver<u8> {
-                TOPIC_SubTopic_Bar.subscribe()
+            /// Subscribe to the `Bar` topic.
+            pub fn subscribe() -> Subscriber<u8> {
+                Subscriber(TOPIC_SubTopic_Bar.subscribe())
             }
 
+            /// Publish to the `Bar` topic.
             pub fn publish(payload: u8) {
                 TOPIC_SubTopic_Bar.send(payload.clone()).ok();
 
@@ -80,7 +133,7 @@ pub mod message_bus {
         }
     }
 
-    /// Handle to the `SystemHealth` topic on the bus.
+    /// Handle to the `SystemHealth` topic.
     pub struct SystemHealth {}
 
     #[doc(hidden)]
@@ -88,16 +141,18 @@ pub mod message_bus {
     static TOPIC_SystemHealth: Lazy<Sender<String>> = Lazy::new(|| channel(1).0);
 
     impl SystemHealth {
-        pub fn subscribe() -> Receiver<String> {
-            TOPIC_SystemHealth.subscribe()
+        /// Subscribe to the `SystemHealth` topic.
+        pub fn subscribe() -> Subscriber<String> {
+            Subscriber(TOPIC_SystemHealth.subscribe())
         }
 
+        /// Publish to the `SystemHealth` topic.
         pub fn publish(payload: String) {
             TOPIC_SystemHealth.send(payload).ok();
         }
     }
 
-    /// Handle to the `SomeData` topic on the bus.
+    /// Handle to the `SomeData` topic.
     pub struct SomeData {}
 
     #[doc(hidden)]
@@ -105,10 +160,12 @@ pub mod message_bus {
     static TOPIC_SomeData: Lazy<Sender<u32>> = Lazy::new(|| channel(1).0);
 
     impl SomeData {
-        pub fn subscribe() -> Receiver<u32> {
-            TOPIC_SomeData.subscribe()
+        /// Subscribe to the `SomeData` topic.
+        pub fn subscribe() -> Subscriber<u32> {
+            Subscriber(TOPIC_SomeData.subscribe())
         }
 
+        /// Publish to the `SomeData` topic.
         pub fn publish(payload: u32) {
             TOPIC_SomeData.send(payload).ok();
         }
@@ -117,31 +174,6 @@ pub mod message_bus {
     //
     // ----- end macro expansion -----
     //
-
-    /// Will flush errors (`Lagged`), and finaly give out the latest value.
-    ///
-    /// The closue `on_err` will run for all errors, and the `Closed` error will never come as the
-    /// producer is a static variable that is never dropped.
-    pub async fn recv_with_flush<T: Clone, F: FnMut(RecvError)>(
-        receiver: &mut Receiver<T>,
-        mut on_err: F,
-    ) -> T {
-        loop {
-            match receiver.recv().await {
-                Ok(msg) => break msg,
-                Err(e) => {
-                    // The oldest value has been overwritten here, recv again to get the "new"
-                    // oldest value.
-                    on_err(e);
-                }
-            }
-        }
-    }
-
-    /// Receive and ignore `Lagged` errors. This will provide the latest value available.
-    pub async fn recv_ignore_error<T: Clone>(receiver: &mut Receiver<T>) -> T {
-        recv_with_flush(receiver, |_| {}).await
-    }
 }
 
 use tokio::time::{sleep, Duration};
@@ -154,7 +186,7 @@ async fn main() {
         let mut sub1 = message_bus::SomeData::subscribe();
 
         loop {
-            let msg = message_bus::recv_ignore_error(&mut sub1).await;
+            let msg = sub1.recv().await;
             println!("Got {msg:?} on task 1");
         }
     });
@@ -163,23 +195,23 @@ async fn main() {
         let mut sub1 = message_bus::SomeData::subscribe();
 
         loop {
-            let msg = message_bus::recv_ignore_error(&mut sub1).await;
+            let msg = sub1.recv().await;
             println!("Got {msg} on task 2");
 
             sleep(Duration::from_millis(150)).await;
         }
     });
 
-    // v.push(tokio::spawn(async {
-    //     let mut sub1 = message_bus::SomeData::subscribe();
+    tokio::spawn(async {
+        let mut sub1 = message_bus::SomeData::subscribe();
 
-    //     loop {
-    //         let msg = sub1.recv().await;
-    //         println!("Got {msg:?} on task 3");
+        loop {
+            let msg = sub1.recv().await;
+            println!("Got {msg:?} on task 3");
 
-    //         sleep(Duration::from_millis(1_000)).await;
-    //     }
-    // }));
+            sleep(Duration::from_millis(1_000)).await;
+        }
+    });
 
     tokio::spawn(async {
         for i in 0..100 {
