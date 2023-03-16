@@ -30,30 +30,30 @@ pub mod message_bus {
     where
         T: Clone,
     {
-        /// Tries to receive a value. Will never return `Lagged`.
+        /// Tries to receive a value, will return `None` if there are none.
         pub fn try_recv(&mut self) -> Option<T> {
             loop {
                 match self.0.try_recv() {
                     Ok(v) => return Some(v),
                     Err(TryRecvError::Empty) => return None,
-                    Err(TryRecvError::Lagged(_)) => {}
+                    Err(TryRecvError::Lagged(_)) => {} // Skip lagged errors
                     Err(TryRecvError::Closed) => unreachable!(), // Impossible to drop the sender
                 }
             }
         }
 
-        /// Receive and ignore `Lagged` errors. This will provide the latest value available.
+        /// Receive a value from the bus.
         pub async fn recv(&mut self) -> T {
             loop {
                 match self.0.recv().await {
                     Ok(msg) => return msg,
-                    Err(RecvError::Lagged(_)) => {}
+                    Err(RecvError::Lagged(_)) => {} // Skip lagged errors
                     Err(RecvError::Closed) => unreachable!(), // Impossible to drop the sender
                 }
             }
         }
 
-        /// Checks if there is any message on the topic.
+        /// Checks if there is a message on the topic.
         pub fn is_empty(&self) -> bool {
             self.0.is_empty()
         }
