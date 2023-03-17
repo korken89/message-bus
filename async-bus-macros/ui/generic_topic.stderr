@@ -1,0 +1,5 @@
+error: Only the forms `Topic` or `sub_topic::SubTopic` is supported, remove the generic
+ --> ui/generic_topic.rs:4:5
+  |
+4 |     SomeData<u32> => some::Data,
+  |     ^^^^^^^^^^^^^

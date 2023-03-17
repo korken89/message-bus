@@ -20,7 +20,8 @@ pub struct Topic {
 /// Sub-topic definition `path => { ... }`
 #[derive(Debug)]
 pub struct SubTopic {
-    pub name: Path,
+    pub name: Ident,
+    pub module: Ident,
     pub ast: Ast,
 }
 
@@ -48,6 +49,15 @@ fn parse_ast_nodes(input: ParseStream) -> parse::Result<Ast> {
             ));
         }
 
+        for segment in &path.segments {
+            if !segment.arguments.is_none() {
+                return Err(parse::Error::new_spanned(
+                &segment,
+                "Only the forms `Topic` or `sub_topic::SubTopic` is supported, remove the generic",
+            ));
+            }
+        }
+
         let _: Token![=>] = input.parse()?;
 
         if let Some(ident) = path.get_ident() {
@@ -63,8 +73,11 @@ fn parse_ast_nodes(input: ParseStream) -> parse::Result<Ast> {
             let content;
             braced!(content in input);
 
+            let module = path.segments[0].ident.clone();
+            let name = path.segments[1].ident.clone();
             sub_topics.push(SubTopic {
-                name: path,
+                name,
+                module,
                 ast: parse_ast_nodes(&content)?,
             });
         } else {
@@ -132,11 +145,12 @@ mod test {
             },
             SystemHealth => String, // Primitive payload
             SomeData => some::Data, // Path to payload
+            SomeData2 => some::Data2<u32>, // Path to payload
         );
 
         let ast = parse(tokens).unwrap();
 
-        assert_eq!(ast.topics.len(), 2);
+        assert_eq!(ast.topics.len(), 3);
         assert_eq!(ast.sub_topics.len(), 1);
         assert_eq!(ast.sub_topics[0].ast.topics.len(), 3);
         assert_eq!(ast.sub_topics[0].ast.sub_topics.len(), 1);
@@ -157,5 +171,6 @@ mod test {
         assert!(check_if_topic_exists(&ast, "Fnaz", "i128"));
         assert!(check_if_topic_exists(&ast, "SystemHealth", "String"));
         assert!(check_if_topic_exists(&ast, "SomeData", "some::Data"));
+        assert!(check_if_topic_exists(&ast, "SomeData2", "some::Data2<u32>"));
     }
 }
