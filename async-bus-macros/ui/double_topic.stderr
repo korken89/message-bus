@@ -1,0 +1,23 @@
+error: Non-unique topic name
+ --> ui/double_topic.rs:5:5
+  |
+5 |     SomeData => i32, // Err
+  |     ^^^^^^^^
+
+error: Non-unique topic name
+ --> ui/double_topic.rs:7:5
+  |
+7 |     SomeData2 => i32, // Err
+  |     ^^^^^^^^^
+
+error: Non-unique topic name
+  --> ui/double_topic.rs:12:9
+   |
+12 |         SomeData3 => u32, // Err
+   |         ^^^^^^^^^
+
+error: Non-unique topic name
+  --> ui/double_topic.rs:18:13
+   |
+18 |             SomeData4 => u32, // Err
+   |             ^^^^^^^^^
