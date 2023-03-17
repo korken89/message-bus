@@ -50,12 +50,11 @@ fn parse_ast_nodes(input: ParseStream) -> parse::Result<Ast> {
 
         let _: Token![=>] = input.parse()?;
 
-        if path.segments.len() == 1 {
+        if let Some(ident) = path.get_ident() {
             // Parse a topic 'Topic`
 
+            let name = ident.clone();
             let payload: Path = input.parse()?;
-
-            let name = path.segments[0].ident.clone();
 
             topics.push(Topic { name, payload });
         } else if path.segments.len() == 2 {
