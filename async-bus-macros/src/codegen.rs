@@ -6,23 +6,33 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::quote;
 use syn::Ident;
 
-fn topics_enum(name: &Ident, topics: &[Topic], sub_topics: &[SubTopic]) -> TokenStream2 {
+fn make_topics_enum(name: &Ident, topics: &[Topic], sub_topics: &[SubTopic]) -> TokenStream2 {
     let mut arms = Vec::new();
 
     for topic in topics {
         let tn = &topic.name;
         let tp = &topic.payload;
+        let doc = format!("Type-level definition of the `{tn}` topic");
 
-        arms.push(quote!(#tn(#tp)));
+        arms.push(quote!(
+            #[doc = #doc]
+            #tn(#tp)
+        ));
     }
 
     for sub_topic in sub_topics {
         let tn = &sub_topic.name;
+        let doc = format!("Type-level definition of the `{tn}` sub-topic");
 
-        arms.push(quote!(#tn(#tn)));
+        arms.push(quote!(
+            #[doc = #doc]
+            #tn(#tn)
+        ));
     }
 
+    let doc = format!("Type-level definition of all topics in `{name}`");
     quote!(
+        #[doc = #doc]
         #[derive(Clone)]
         pub enum #name {
             #(#arms),*
@@ -80,7 +90,7 @@ fn codegen_subtopics(
     for sub_topic in sub_topics {
         subtopic_tracker.add_subtopic(sub_topic.name.clone());
 
-        let topic_enum = topics_enum(
+        let topic_enum = make_topics_enum(
             &sub_topic.name,
             &sub_topic.ast.topics,
             &sub_topic.ast.sub_topics,
@@ -104,6 +114,8 @@ fn codegen_subtopics(
             quote!()
         };
 
+        let doc_sub = format!("Subscribe to the `{sub_topic_name}` sub-topic.");
+
         tokens.push(quote!(
             #pub_use
 
@@ -115,6 +127,13 @@ fn codegen_subtopics(
 
                 #[doc = #sub_topic_doc2]
                 #topic_enum
+
+                impl #sub_topic_name {
+                    #[doc = #doc_sub]
+                    pub fn subscribe() -> ::async_bus::Subscriber<#sub_topic_name> {
+                        #sub_topic_static.subscribe()
+                    }
+                }
 
                 #(#topics)*
 
@@ -153,7 +172,6 @@ impl SubTopicTracker {
     pub fn to_parent_publishes(&self, current_topic: &Ident) -> Vec<TokenStream2> {
         let mut publish_tokens = Vec::new();
 
-        // let mut tokens = quote!(payload);
         let mut super_tokens = quote!();
         let mut payload = quote!(payload.clone());
         let mut last_topic = current_topic;
