@@ -1,0 +1,5 @@
+error: Capacity must be larger than 0
+ --> ui/capacity_error.rs:6:20
+  |
+6 |         SomeData2 [0] => i32, // Err
+  |                    ^
