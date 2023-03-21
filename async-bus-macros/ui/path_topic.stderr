@@ -1,5 +1,5 @@
 error: expected curly braces
- --> ui/path_topic.rs:4:23
+ --> ui/path_topic.rs:5:27
   |
-4 |     ohno::SomeData => some::Data,
-  |                       ^^^^
+5 |         ohno::SomeData => some::Data,
+  |                           ^^^^

@@ -1,0 +1,5 @@
+error: The toplevel definition must be a sub-topic to define the root of the topic tree
+ --> ui/topic_at_toplevel.rs:7:5
+  |
+7 |     SomeData2 => i32,
+  |     ^^^^^^^^^

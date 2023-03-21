@@ -1,0 +1,11 @@
+error: Only one toplevel sub-topic is allowed to define the root of the topic tree
+ --> ui/double_toplevel.rs:4:10
+  |
+4 |     bus::Toplevel1 => {
+  |          ^^^^^^^^^
+
+error: Only one toplevel sub-topic is allowed to define the root of the topic tree
+ --> ui/double_toplevel.rs:7:10
+  |
+7 |     bus::Toplevel2 => {
+  |          ^^^^^^^^^

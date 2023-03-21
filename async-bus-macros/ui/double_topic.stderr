@@ -1,23 +1,23 @@
 error: Non-unique topic name
- --> ui/double_topic.rs:5:5
+ --> ui/double_topic.rs:6:9
   |
-5 |     SomeData => i32, // Err
-  |     ^^^^^^^^
+6 |         SomeData => i32, // Err
+  |         ^^^^^^^^
 
 error: Non-unique topic name
- --> ui/double_topic.rs:7:5
+ --> ui/double_topic.rs:8:9
   |
-7 |     SomeData2 => i32, // Err
-  |     ^^^^^^^^^
+8 |         SomeData2 => i32, // Err
+  |         ^^^^^^^^^
 
 error: Non-unique topic name
-  --> ui/double_topic.rs:12:9
+  --> ui/double_topic.rs:13:13
    |
-12 |         SomeData3 => u32, // Err
-   |         ^^^^^^^^^
-
-error: Non-unique topic name
-  --> ui/double_topic.rs:18:13
-   |
-18 |             SomeData4 => u32, // Err
+13 |             SomeData3 => u32, // Err
    |             ^^^^^^^^^
+
+error: Non-unique topic name
+  --> ui/double_topic.rs:19:17
+   |
+19 |                 SomeData4 => u32, // Err
+   |                 ^^^^^^^^^

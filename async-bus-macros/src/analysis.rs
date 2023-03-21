@@ -34,8 +34,24 @@ fn check_subtopics_for_uniqueness(sub_topics: &[SubTopic], errors: &mut Vec<syn:
 pub fn analyze(ast: &Ast) -> Result<Analysis, syn::Error> {
     let mut errors = Vec::new();
 
+    // Make sure that the topmost definition defines the toplevel topic
+    for topic in &ast.topics {
+        errors.push(syn::Error::new_spanned(
+            &topic.name,
+            "The toplevel definition must be a sub-topic to define the root of the topic tree",
+        ));
+    }
+
+    if ast.sub_topics.len() > 1 {
+        for sub_topic in &ast.sub_topics {
+            errors.push(syn::Error::new_spanned(
+                &sub_topic.name,
+                "Only one toplevel sub-topic is allowed to define the root of the topic tree",
+            ));
+        }
+    }
+
     // Check for doubly defined topic names in each subtopic level
-    check_topics_for_uniqueness(&ast.topics, &mut errors);
     check_subtopics_for_uniqueness(&ast.sub_topics, &mut errors);
 
     // Collect errors if any and return/halt

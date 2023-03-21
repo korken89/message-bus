@@ -1,5 +1,5 @@
 error: Only the forms `Topic` or `sub_topic::SubTopic` is supported, remove the leading colons
- --> ui/path_topic_leading_colon.rs:4:5
+ --> ui/path_topic_leading_colon.rs:5:9
   |
-4 |     ::ohno::SomeData => some::Data,
-  |     ^^
+5 |         ::ohno::SomeData => some::Data,
+  |         ^^

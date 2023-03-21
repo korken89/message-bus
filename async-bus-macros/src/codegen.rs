@@ -3,8 +3,7 @@ use crate::{
     ast::{Ast, SubTopic, Topic},
 };
 use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::{quote, TokenStreamExt};
-use std::collections::HashMap;
+use quote::quote;
 use syn::Ident;
 
 fn topics_enum(name: &Ident, topics: &[Topic], sub_topics: &[SubTopic]) -> TokenStream2 {
@@ -24,6 +23,7 @@ fn topics_enum(name: &Ident, topics: &[Topic], sub_topics: &[SubTopic]) -> Token
     }
 
     quote!(
+        #[derive(Clone)]
         pub enum #name {
             #(#arms),*
         }
@@ -42,26 +42,7 @@ fn codegen_topics(topics: &[Topic], subtopic_tracker: &mut SubTopicTracker) -> V
         let doc_sub = format!("Subscribe to the `{topic_name}` topic.");
         let doc_pub = format!("Publish to the `{topic_name}` topic.");
 
-        let mut publish_parent_topic = Vec::new();
-
-        for (parent_topic, depth) in &subtopic_tracker.0 {
-            let parent_topic_static =
-                Ident::new(&format!("__TOPIC_{parent_topic}"), Span::call_site());
-            let mut super_tokens = TokenStream2::new();
-
-            for _ in 0..*depth {
-                super_tokens.extend(quote!(super::));
-            }
-
-            // if *depth > 0 {
-            //     super_tokens.extend(quote!(::));
-            // }
-
-            // ..
-            publish_parent_topic.push(quote!(
-                #super_tokens #parent_topic_static.publish(payload.clone());
-            ));
-        }
+        let publish_parent_topics = subtopic_tracker.to_parent_publishes(topic_name);
 
         tokens.push(quote!(
             #[doc = #doc_topic]
@@ -79,8 +60,8 @@ fn codegen_topics(topics: &[Topic], subtopic_tracker: &mut SubTopicTracker) -> V
 
                 #[doc = #doc_pub]
                 pub fn publish(payload: #topic_payload) {
-                    #(#publish_parent_topic)*
-                    /// TEST
+                    #(#publish_parent_topics)*
+
                     #topic_static.publish(payload);
                 }
             }
@@ -94,8 +75,6 @@ fn codegen_subtopics(
     sub_topics: &[SubTopic],
     subtopic_tracker: &mut SubTopicTracker,
 ) -> Vec<TokenStream2> {
-    subtopic_tracker.increase_depth();
-
     let mut tokens = Vec::new();
 
     for sub_topic in sub_topics {
@@ -119,8 +98,14 @@ fn codegen_subtopics(
             format!("All topics in the `{sub_topic_module}::{sub_topic_name}` subtopic");
         let sub_topic_static = Ident::new(&format!("__TOPIC_{sub_topic_name}"), Span::call_site());
 
+        let pub_use = if !subtopic_tracker.at_root() {
+            quote!(pub use #sub_topic_module::#sub_topic_name;)
+        } else {
+            quote!()
+        };
+
         tokens.push(quote!(
-            pub use #sub_topic_module::#sub_topic_name;
+            #pub_use
 
             #[doc = #sub_topic_doc1]
             pub mod #sub_topic_module {
@@ -136,74 +121,68 @@ fn codegen_subtopics(
                 #(#sub_topic_tokens)*
             }
         ));
+        subtopic_tracker.remove_last_subtopic();
     }
-
-    subtopic_tracker.decrease_depth();
 
     tokens
 }
 
-struct SubTopicTracker(HashMap<Ident, usize>);
+struct SubTopicTracker(Vec<Ident>);
 
 impl SubTopicTracker {
     pub fn new() -> Self {
-        Self(HashMap::new())
+        Self(Vec::new())
+    }
+
+    pub fn depth(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn at_root(&self) -> bool {
+        self.depth() < 2
     }
 
     pub fn add_subtopic(&mut self, subtopic: Ident) {
-        println!("Adding subtopic: {subtopic:?}");
-        assert!(self.0.insert(subtopic, 0).is_none());
+        self.0.push(subtopic);
     }
 
-    pub fn increase_depth(&mut self) {
-        println!("Increasing depth, pre: {:#?}", self.0);
-        for (_, v) in &mut self.0 {
-            *v += 1;
-        }
-        println!("Increasing depth, post: {:#?}", self.0);
+    pub fn remove_last_subtopic(&mut self) {
+        self.0.pop();
     }
 
-    pub fn decrease_depth(&mut self) {
-        let mut to_remove = vec![];
+    pub fn to_parent_publishes(&self, current_topic: &Ident) -> Vec<TokenStream2> {
+        let mut publish_tokens = Vec::new();
 
-        println!("Decreasing depth, pre: {:#?}", self.0);
-        for (k, v) in &mut self.0 {
-            if *v == 0 {
-                to_remove.push(k.clone());
-            } else {
-                *v -= 1;
-            }
+        // let mut tokens = quote!(payload);
+        let mut super_tokens = quote!();
+        let mut payload = quote!(payload.clone());
+        let mut last_topic = current_topic;
+
+        for parent_topic in self.0.iter().rev() {
+            let parent_topic_static =
+                Ident::new(&format!("__TOPIC_{parent_topic}"), Span::call_site());
+
+            payload = quote!(#super_tokens #parent_topic::#last_topic(#payload));
+
+            publish_tokens.push(quote!(
+                #super_tokens #parent_topic_static.publish(#payload);
+            ));
+
+            super_tokens = quote!(#super_tokens super::);
+            last_topic = parent_topic;
         }
 
-        for t in &to_remove {
-            self.0.remove(t);
-        }
-        println!("Decreasing depth, post: {:#?}", self.0);
+        publish_tokens
     }
 }
 
 pub fn generate(ast: &Ast, _anaysis: &Analysis) -> proc_macro::TokenStream {
-    let toplevel_ident = Ident::new("Toplevel", Span::call_site());
-    let toplevel_enum = topics_enum(&toplevel_ident, &ast.topics, &ast.sub_topics);
-
     let mut subtopic_tracker = SubTopicTracker::new();
 
-    subtopic_tracker.add_subtopic(toplevel_ident);
-
-    let toplevel_topics = codegen_topics(&ast.topics, &mut subtopic_tracker);
-    let toplevel_subtopics = codegen_subtopics(&ast.sub_topics, &mut subtopic_tracker);
-    let toplevel_static = Ident::new(&format!("__TOPIC_Toplevel"), Span::call_site());
+    let tokens = codegen_subtopics(&ast.sub_topics, &mut subtopic_tracker);
 
     quote! {
-        #[doc(hidden)]
-        #[allow(non_upper_case_globals)]
-        static #toplevel_static: ::async_bus::Topic<Toplevel> = ::async_bus::Topic::new();
-
-        #toplevel_enum
-
-        #(#toplevel_topics)*
-
-        #(#toplevel_subtopics)*
+        #(#tokens)*
     }
     .into()
 }

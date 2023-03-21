@@ -1,11 +1,11 @@
 error: Non-unique sub-topic name
- --> ui/double_subtopic.rs:7:5
+ --> ui/double_subtopic.rs:8:14
   |
-7 |     sub::Topic => { // Err
-  |     ^^^^^^^^^^
+8 |         sub::Topic => { // Err
+  |              ^^^^^
 
 error: Non-unique sub-topic name
-  --> ui/double_subtopic.rs:15:9
+  --> ui/double_subtopic.rs:16:18
    |
-15 |         sub::TopicErr => { // Err
-   |         ^^^^^^^^^^^^^
+16 |             sub::TopicErr => { // Err
+   |                  ^^^^^^^^

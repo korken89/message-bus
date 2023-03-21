@@ -1,5 +1,5 @@
 error: Only the forms `Topic` or `sub_topic::SubTopic` is supported
- --> ui/path_topic_long.rs:4:5
+ --> ui/path_topic_long.rs:5:9
   |
-4 |     ohno::too_long::SomeData => some::Data,
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+5 |         ohno::too_long::SomeData => some::Data,
+  |         ^^^^^^^^^^^^^^^^^^^^^^^^

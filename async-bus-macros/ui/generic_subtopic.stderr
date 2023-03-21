@@ -1,5 +1,5 @@
 error: Only the forms `Topic` or `sub_topic::SubTopic` is supported, remove the generic
- --> ui/generic_subtopic.rs:4:10
+ --> ui/generic_subtopic.rs:5:14
   |
-4 |     sub::Topic<u32> => {
-  |          ^^^^^^^^^^
+5 |         sub::Topic<u32> => {
+  |              ^^^^^^^^^^
