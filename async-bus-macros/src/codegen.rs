@@ -47,6 +47,7 @@ fn codegen_topics(topics: &[Topic], subtopic_tracker: &mut SubTopicTracker) -> V
         let topic_name = &topic.name;
         let topic_payload = &topic.payload;
         let topic_static = Ident::new(&format!("__TOPIC_{topic_name}"), Span::call_site());
+        let topic_capacity = &topic.capacity;
 
         let doc_topic = format!("Handle to the `{topic_name}` topic.");
         let doc_sub = format!("Subscribe to the `{topic_name}` topic.");
@@ -60,7 +61,7 @@ fn codegen_topics(topics: &[Topic], subtopic_tracker: &mut SubTopicTracker) -> V
 
             #[doc(hidden)]
             #[allow(non_upper_case_globals)]
-            static #topic_static: ::async_bus::Topic<#topic_payload> = ::async_bus::Topic::new();
+            static #topic_static: ::async_bus::Topic<#topic_payload> = ::async_bus::Topic::new::<#topic_capacity>();
 
             impl #topic_name {
                 #[doc = #doc_sub]
@@ -116,6 +117,9 @@ fn codegen_subtopics(
 
         let doc_sub = format!("Subscribe to the `{sub_topic_name}` sub-topic.");
 
+        let mut capacity = 0;
+        find_total_capacity(sub_topic, &mut capacity);
+
         tokens.push(quote!(
             #pub_use
 
@@ -123,7 +127,7 @@ fn codegen_subtopics(
             pub mod #sub_topic_module {
                 #[doc(hidden)]
                 #[allow(non_upper_case_globals)]
-                static #sub_topic_static: ::async_bus::Topic<#sub_topic_name> = ::async_bus::Topic::new();
+                static #sub_topic_static: ::async_bus::Topic<#sub_topic_name> = ::async_bus::Topic::new::<#capacity>();
 
                 #[doc = #sub_topic_doc2]
                 #topic_enum
@@ -144,6 +148,21 @@ fn codegen_subtopics(
     }
 
     tokens
+}
+
+fn find_total_capacity(sub_topic: &SubTopic, capacity: &mut usize) {
+    let topic_cap: usize = sub_topic
+        .ast
+        .topics
+        .iter()
+        .map(|topic| topic.capacity)
+        .sum();
+
+    *capacity += topic_cap;
+
+    for st in &sub_topic.ast.sub_topics {
+        find_total_capacity(st, capacity);
+    }
 }
 
 struct SubTopicTracker(Vec<Ident>);

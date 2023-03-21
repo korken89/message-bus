@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream as TokenStream2;
 use syn::{
-    braced,
+    braced, bracketed,
     parse::{self, Error, Parse, ParseStream},
-    Ident, Path, Token,
+    token, Ident, LitInt, Path, Token,
 };
 
 /// Parse a token stream into the AST.
@@ -10,11 +10,12 @@ pub fn parse(items: TokenStream2) -> Result<Ast, Error> {
     syn::parse2(items)
 }
 
-/// Topic definition `name => payload`
+/// Topic definition `name [optional capacity (usize)] => payload`
 #[derive(Debug)]
 pub struct Topic {
     pub name: Ident,
     pub payload: Path,
+    pub capacity: usize,
 }
 
 /// Sub-topic definition `path => { ... }`
@@ -58,6 +59,25 @@ fn parse_ast_nodes(input: ParseStream) -> parse::Result<Ast> {
             }
         }
 
+        let capacity = if input.peek(token::Bracket) {
+            let content;
+            bracketed!(content in input);
+
+            let lit = content.parse::<LitInt>()?;
+            let cap = lit.base10_parse::<usize>()?;
+
+            if cap == 0 {
+                return Err(parse::Error::new_spanned(
+                    &lit,
+                    "Capacity must be larger than 0",
+                ));
+            }
+
+            cap
+        } else {
+            1
+        };
+
         let _: Token![=>] = input.parse()?;
 
         if let Some(ident) = path.get_ident() {
@@ -66,7 +86,11 @@ fn parse_ast_nodes(input: ParseStream) -> parse::Result<Ast> {
             let name = ident.clone();
             let payload: Path = input.parse()?;
 
-            topics.push(Topic { name, payload });
+            topics.push(Topic {
+                name,
+                payload,
+                capacity,
+            });
         } else if path.segments.len() == 2 {
             // Parse a subtopic 'sub_topic::SubTopic`
 

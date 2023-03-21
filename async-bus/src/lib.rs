@@ -18,8 +18,8 @@ where
     T: Clone,
 {
     /// Create a new topic.
-    pub const fn new() -> Self {
-        Self(Lazy::new(|| channel(1).0))
+    pub const fn new<const CAP: usize>() -> Self {
+        Self(Lazy::new(|| channel(CAP).0))
     }
 
     /// Subscribe to the topic.
