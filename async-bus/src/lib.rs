@@ -24,7 +24,10 @@ where
 
     /// Subscribe to the topic.
     pub fn subscribe(&self) -> Subscriber<T> {
-        Subscriber(self.0.subscribe())
+        Subscriber {
+            recv: self.0.subscribe(),
+            missed_messages: 0,
+        }
     }
 
     /// Publish to a topic.
@@ -34,7 +37,10 @@ where
 }
 
 /// A subscriber to a topic on the bus.
-pub struct Subscriber<T: Clone>(Receiver<T>);
+pub struct Subscriber<T: Clone> {
+    recv: Receiver<T>,
+    missed_messages: u64,
+}
 
 impl<T> Subscriber<T>
 where
@@ -43,10 +49,10 @@ where
     /// Tries to receive a value, will return `None` if there are none.
     pub fn try_recv(&mut self) -> Option<T> {
         loop {
-            match self.0.try_recv() {
+            match self.recv.try_recv() {
                 Ok(v) => return Some(v),
                 Err(TryRecvError::Empty) => return None,
-                Err(TryRecvError::Lagged(_)) => {} // Skip lagged errors
+                Err(TryRecvError::Lagged(n)) => self.missed_messages += n,
                 Err(TryRecvError::Closed) => unreachable!(), // Impossible to drop the sender
             }
         }
@@ -55,9 +61,9 @@ where
     /// Receive a value from the bus.
     pub async fn recv(&mut self) -> T {
         loop {
-            match self.0.recv().await {
+            match self.recv.recv().await {
                 Ok(msg) => return msg,
-                Err(RecvError::Lagged(_)) => {} // Skip lagged errors
+                Err(RecvError::Lagged(n)) => self.missed_messages += n,
                 Err(RecvError::Closed) => unreachable!(), // Impossible to drop the sender
             }
         }
@@ -65,6 +71,14 @@ where
 
     /// Checks if there is a message on the topic.
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.recv.is_empty()
+    }
+
+    /// Number of messages missed since last time this was called.
+    pub fn messages_lost(&mut self) -> u64 {
+        let n = self.missed_messages;
+        self.missed_messages = 0;
+
+        n
     }
 }
