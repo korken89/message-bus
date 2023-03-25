@@ -1,4 +1,4 @@
-use async_bus::make_message_bus;
+use message_bus::make_message_bus;
 
 make_message_bus!(
     bus::Toplevel => {

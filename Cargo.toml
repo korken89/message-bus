@@ -1,5 +1,5 @@
 [workspace]
 members = [
-    "async-bus",
-    "async-bus-macros",
+    "message-bus",
+    "message-bus-macros",
 ]

@@ -1,12 +1,12 @@
 [package]
-name = "async-bus"
+name = "message-bus"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = ["sync"] }
 once_cell = "1.17.1"
-async-bus-macros = { version = "*", path = "../async-bus-macros"}
+message-bus-macros = { version = "*", path = "../message-bus-macros"}
 
 [dev-dependencies]
 tokio = { version = "1", features = ["sync", "rt", "time", "macros", "rt-multi-thread"] }

@@ -61,11 +61,11 @@ fn codegen_topics(topics: &[Topic], subtopic_tracker: &mut SubTopicTracker) -> V
 
             #[doc(hidden)]
             #[allow(non_upper_case_globals)]
-            static #topic_static: ::async_bus::Topic<#topic_payload> = ::async_bus::Topic::new::<#topic_capacity>();
+            static #topic_static: ::message_bus::Topic<#topic_payload> = ::message_bus::Topic::new::<#topic_capacity>();
 
             impl #topic_name {
                 #[doc = #doc_sub]
-                pub fn subscribe() -> ::async_bus::Subscriber<#topic_payload> {
+                pub fn subscribe() -> ::message_bus::Subscriber<#topic_payload> {
                     #topic_static.subscribe()
                 }
 
@@ -127,14 +127,14 @@ fn codegen_subtopics(
             pub mod #sub_topic_module {
                 #[doc(hidden)]
                 #[allow(non_upper_case_globals)]
-                static #sub_topic_static: ::async_bus::Topic<#sub_topic_name> = ::async_bus::Topic::new::<#capacity>();
+                static #sub_topic_static: ::message_bus::Topic<#sub_topic_name> = ::message_bus::Topic::new::<#capacity>();
 
                 #[doc = #sub_topic_doc2]
                 #topic_enum
 
                 impl #sub_topic_name {
                     #[doc = #doc_sub]
-                    pub fn subscribe() -> ::async_bus::Subscriber<#sub_topic_name> {
+                    pub fn subscribe() -> ::message_bus::Subscriber<#sub_topic_name> {
                         #sub_topic_static.subscribe()
                     }
                 }

@@ -2,7 +2,7 @@
 
 #![deny(missing_docs)]
 
-pub use async_bus_macros::make_message_bus;
+pub use message_bus_macros::make_message_bus;
 use once_cell::sync::Lazy;
 use tokio::sync::broadcast::{
     channel,
