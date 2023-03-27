@@ -1,7 +1,15 @@
 [package]
 name = "message-bus-macros"
 version = "0.1.0"
+authors = ["Emil Fresk <emil.fresk@gmail.com>"]
+categories = ["data-structures"]
+description = "Generate a pub-sub bus for use in async applications, macros crate"
+documentation = "https://docs.rs/make-message-bus"
 edition = "2021"
+keywords = ["static", "message-bus"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/korken89/message-bus"
+readme = "../README.md"
 
 [lib]
 proc-macro = true

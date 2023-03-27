@@ -1,5 +1,5 @@
 [workspace]
 members = [
-    "message-bus",
+    "make-message-bus",
     "message-bus-macros",
 ]
