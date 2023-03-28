@@ -1,6 +1,6 @@
 [package]
 name = "make-message-bus"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Emil Fresk <emil.fresk@gmail.com>"]
 categories = ["data-structures"]
 description = "Generate a pub-sub bus for use in async applications"
@@ -14,7 +14,7 @@ readme = "../README.md"
 [dependencies]
 tokio = { version = "1", features = ["sync"] }
 once_cell = "1.17.1"
-message-bus-macros = { version = "0.1.0", path = "../message-bus-macros"}
+message-bus-macros = { version = "0.1.1", path = "../message-bus-macros"}
 
 [dev-dependencies]
 tokio = { version = "1", features = ["sync", "rt", "time", "macros", "rt-multi-thread"] }
